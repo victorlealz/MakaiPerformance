@@ -1,0 +1,9 @@
+{
+  // By Victor Leal Antunes
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "makai-auto-registro",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public"
+  }
+}

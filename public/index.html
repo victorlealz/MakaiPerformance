@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Makai Performance System [BETA]: registro mobile-first de treinos com envio do resumo para o próprio WhatsApp.">
+  <meta name="theme-color" content="#00D13B">
+  <title>Makai Performance System [BETA]</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <script src="./js/main.js" defer></script>
+</head>
+<body>
+  <!-- By Victor Leal Antunes -->
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand" aria-label="Makai Performance System Beta">
+        <span class="brand__mark">MAKAI</span>
+        <span class="brand__name">Performance System <strong>[BETA]</strong></span>
+      </div>
+
+      <div class="menu-wrap">
+        <button
+          id="menuButton"
+          class="icon-button"
+          type="button"
+          aria-expanded="false"
+          aria-controls="menuPanel"
+          aria-label="Abrir menu"
+        >
+          <span aria-hidden="true">⋮</span>
+        </button>
+        <div id="menuPanel" class="menu-panel" hidden>
+          <button id="privacyButton" class="menu-panel__item" type="button">Privacidade</button>
+          <button id="clearDataButton" class="menu-panel__item menu-panel__item--danger" type="button">Apagar dados deste aparelho</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section id="homeScreen" class="screen" aria-labelledby="homeTitle">
+        <div class="hero">
+          <p class="eyebrow">REGISTRO DIÁRIO</p>
+          <h1 id="homeTitle">Registre o treino.</h1>
+          <p class="hero__text">Escolha o treino de hoje e comece em poucos toques.</p>
+        </div>
+
+        <div class="section-block">
+          <h2 class="section-title">Escolha o treino de hoje</h2>
+          <div class="modality-grid" role="group" aria-label="Modalidade do treino">
+            <button class="modality-button" type="button" data-modality="Musculação">
+              <span class="modality-button__emoji" aria-hidden="true">🏋️</span>
+              <span>Musculação</span>
+            </button>
+            <button class="modality-button" type="button" data-modality="Jiu-Jitsu">
+              <span class="modality-button__emoji" aria-hidden="true">🥋</span>
+              <span>Jiu-Jitsu</span>
+            </button>
+            <button class="modality-button" type="button" data-modality="Judô">
+              <span class="modality-button__emoji" aria-hidden="true">🥋</span>
+              <span>Judô</span>
+            </button>
+            <button class="modality-button" type="button" data-modality="Muay Thai">
+              <span class="modality-button__emoji" aria-hidden="true">🥊</span>
+              <span>Muay Thai</span>
+            </button>
+          </div>
+
+          <details class="other-sport" id="otherSportDetails">
+            <summary>Outro esporte</summary>
+            <div class="field field--compact">
+              <label for="otherSportInput">Qual esporte?</label>
+              <input
+                id="otherSportInput"
+                name="otherSport"
+                type="text"
+                maxlength="60"
+                autocomplete="off"
+                enterkeyhint="done"
+                placeholder="Ex.: corrida, boxe, natação"
+              >
+              <button id="selectOtherSportButton" class="button button--secondary" type="button">Usar este esporte</button>
+            </div>
+          </details>
+        </div>
+
+        <div class="sticky-action">
+          <button id="startWorkoutButton" class="button button--primary button--large" type="button" disabled>
+            INICIAR TREINO
+          </button>
+        </div>
+      </section>
+
+      <section id="activeScreen" class="screen" aria-labelledby="activeTitle" hidden>
+        <div class="session-status">
+          <p class="eyebrow">TREINO EM ANDAMENTO</p>
+          <h1 id="activeTitle" class="session-status__modality">Jiu-Jitsu</h1>
+          <div id="activeTimer" class="timer" aria-live="off">00:00:00</div>
+          <div class="session-meta">
+            <div>
+              <span class="session-meta__label">Início</span>
+              <strong id="activeStartTime">--:--</strong>
+            </div>
+            <div>
+              <span class="session-meta__label">ID</span>
+              <strong id="activeSessionId">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="sticky-action">
+          <button id="finishWorkoutButton" class="button button--primary button--large" type="button">FINALIZAR TREINO</button>
+          <button id="cancelWorkoutButton" class="button-link button-link--danger" type="button">Cancelar sessão</button>
+        </div>
+      </section>
+
+      <section id="completionScreen" class="screen" aria-labelledby="completionTitle" hidden>
+        <div class="screen-heading">
+          <p class="eyebrow">COMO FOI O TREINO?</p>
+          <h1 id="completionTitle">Fechar registro</h1>
+          <p id="completionSummary" class="summary-line">—</p>
+        </div>
+
+        <form id="completionForm" novalidate>
+          <fieldset class="form-card">
+            <legend>Horários</legend>
+            <div class="field-grid field-grid--two">
+              <div class="field">
+                <label for="workoutDate">Data</label>
+                <input id="workoutDate" name="workoutDate" type="date" required>
+              </div>
+              <div class="field">
+                <label for="durationMinutes">Duração (min)</label>
+                <input id="durationMinutes" name="durationMinutes" type="number" min="1" step="1" inputmode="numeric" required>
+              </div>
+              <div class="field">
+                <label for="startTimeInput">Início</label>
+                <input id="startTimeInput" name="startTime" type="time" required>
+              </div>
+              <div class="field">
+                <label for="endTimeInput">Fim</label>
+                <input id="endTimeInput" name="endTime" type="time" required>
+              </div>
+            </div>
+            <p class="helper-text">Os horários foram preenchidos automaticamente, mas você pode corrigi-los.</p>
+          </fieldset>
+
+          <fieldset id="rpeFieldset" class="form-card selection-fieldset">
+            <legend>Intensidade percebida (RPE)</legend>
+            <p class="helper-text">1–2 muito leve · 3–4 leve · 5–6 moderado · 7 difícil · 8 muito difícil · 9 extremamente difícil · 10 máximo</p>
+            <div class="chip-grid chip-grid--ten" role="group" aria-label="RPE de 1 a 10">
+              <button type="button" class="chip" data-group="rpe" data-value="1" aria-pressed="false">1</button>
+              <button type="button" class="chip" data-group="rpe" data-value="2" aria-pressed="false">2</button>
+              <button type="button" class="chip" data-group="rpe" data-value="3" aria-pressed="false">3</button>
+              <button type="button" class="chip" data-group="rpe" data-value="4" aria-pressed="false">4</button>
+              <button type="button" class="chip" data-group="rpe" data-value="5" aria-pressed="false">5</button>
+              <button type="button" class="chip" data-group="rpe" data-value="6" aria-pressed="false">6</button>
+              <button type="button" class="chip" data-group="rpe" data-value="7" aria-pressed="false">7</button>
+              <button type="button" class="chip" data-group="rpe" data-value="8" aria-pressed="false">8</button>
+              <button type="button" class="chip" data-group="rpe" data-value="9" aria-pressed="false">9</button>
+              <button type="button" class="chip" data-group="rpe" data-value="10" aria-pressed="false">10</button>
+            </div>
+            <p class="scale-ends"><span>1 = muito leve</span><span>10 = esforço máximo</span></p>
+          </fieldset>
+
+          <fieldset id="sleepFieldset" class="form-card selection-fieldset">
+            <legend>Sono</legend>
+            <div class="chip-grid chip-grid--five" role="group" aria-label="Qualidade do sono de 1 a 5">
+              <button type="button" class="chip" data-group="sleep" data-value="1" aria-pressed="false">1</button>
+              <button type="button" class="chip" data-group="sleep" data-value="2" aria-pressed="false">2</button>
+              <button type="button" class="chip" data-group="sleep" data-value="3" aria-pressed="false">3</button>
+              <button type="button" class="chip" data-group="sleep" data-value="4" aria-pressed="false">4</button>
+              <button type="button" class="chip" data-group="sleep" data-value="5" aria-pressed="false">5</button>
+            </div>
+            <p class="scale-ends"><span>1 = muito ruim</span><span>5 = muito bom</span></p>
+          </fieldset>
+
+          <fieldset id="painFieldset" class="form-card selection-fieldset">
+            <legend>Dor / desconforto</legend>
+            <div class="chip-grid chip-grid--eleven" role="group" aria-label="Dor de 0 a 10">
+              <button type="button" class="chip" data-group="pain" data-value="0" aria-pressed="false">0</button>
+              <button type="button" class="chip" data-group="pain" data-value="1" aria-pressed="false">1</button>
+              <button type="button" class="chip" data-group="pain" data-value="2" aria-pressed="false">2</button>
+              <button type="button" class="chip" data-group="pain" data-value="3" aria-pressed="false">3</button>
+              <button type="button" class="chip" data-group="pain" data-value="4" aria-pressed="false">4</button>
+              <button type="button" class="chip" data-group="pain" data-value="5" aria-pressed="false">5</button>
+              <button type="button" class="chip" data-group="pain" data-value="6" aria-pressed="false">6</button>
+              <button type="button" class="chip" data-group="pain" data-value="7" aria-pressed="false">7</button>
+              <button type="button" class="chip" data-group="pain" data-value="8" aria-pressed="false">8</button>
+              <button type="button" class="chip" data-group="pain" data-value="9" aria-pressed="false">9</button>
+              <button type="button" class="chip" data-group="pain" data-value="10" aria-pressed="false">10</button>
+            </div>
+            <p class="scale-ends"><span>0 = nenhuma dor</span><span>10 = dor muito intensa</span></p>
+            <div id="painLocationWrap" class="field field--spaced" hidden>
+              <label for="painLocation">Local da dor/desconforto <span class="optional">(opcional)</span></label>
+              <input id="painLocation" name="painLocation" type="text" maxlength="100" autocomplete="off" placeholder="Ex.: joelho direito">
+            </div>
+          </fieldset>
+
+          <fieldset id="strengthFields" class="form-card" hidden>
+            <legend>Musculação</legend>
+            <div class="field">
+              <span class="field-label">Sessão <span class="optional">(opcional)</span></span>
+              <div class="chip-grid chip-grid--four" role="group" aria-label="Sessão de musculação">
+                <button type="button" class="chip chip--text" data-group="strengthSession" data-value="A" aria-pressed="false">A</button>
+                <button type="button" class="chip chip--text" data-group="strengthSession" data-value="B" aria-pressed="false">B</button>
+                <button type="button" class="chip chip--text" data-group="strengthSession" data-value="C" aria-pressed="false">C</button>
+                <button type="button" class="chip chip--text" data-group="strengthSession" data-value="Livre" aria-pressed="false">Livre</button>
+              </div>
+            </div>
+            <div id="strengthSessionNameWrap" class="field field--spaced" hidden>
+              <label for="strengthSessionName">Nome da sessão <span class="optional">(opcional)</span></label>
+              <input id="strengthSessionName" name="strengthSessionName" type="text" maxlength="80" autocomplete="off" placeholder="Ex.: Pernas e potência">
+            </div>
+            <div class="field field--spaced">
+              <label for="mainExercise">Exercício(s) principal(is) <span class="optional">(opcional)</span></label>
+              <input id="mainExercise" name="mainExercise" type="text" maxlength="140" autocomplete="off" placeholder="Ex.: Front Squat">
+            </div>
+            <div class="field-grid field-grid--two field--spaced">
+              <div class="field">
+                <label for="loadKg">Carga principal (kg) <span class="optional">(opcional)</span></label>
+                <input id="loadKg" name="loadKg" type="number" min="0" step="0.5" inputmode="decimal" placeholder="90">
+              </div>
+              <div class="field">
+                <label for="setsReps">Séries × repetições <span class="optional">(opcional)</span></label>
+                <input id="setsReps" name="setsReps" type="text" maxlength="40" autocomplete="off" placeholder="Ex.: 5x4">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset id="combatFields" class="form-card" hidden>
+            <legend id="combatLegend">Treino</legend>
+            <div class="field">
+              <span class="field-label">Tipo <span class="optional">(opcional)</span></span>
+              <div id="combatTypeButtons" class="chip-grid chip-grid--auto" role="group" aria-label="Tipo de treino"></div>
+            </div>
+            <div class="field-grid field-grid--two field--spaced">
+              <div class="field">
+                <label for="rounds">Rounds <span class="optional">(opcional)</span></label>
+                <input id="rounds" name="rounds" type="number" min="0" step="1" inputmode="numeric" placeholder="6">
+              </div>
+              <div class="field">
+                <label for="roundDuration">Duração/round (min) <span class="optional">(opcional)</span></label>
+                <input id="roundDuration" name="roundDuration" type="number" min="0" step="0.5" inputmode="decimal" placeholder="10">
+              </div>
+            </div>
+            <div class="field field--spaced">
+              <label for="technicalFocus">Foco técnico <span class="optional">(opcional)</span></label>
+              <input id="technicalFocus" name="technicalFocus" type="text" maxlength="140" autocomplete="off" placeholder="Ex.: passagem de guarda">
+            </div>
+          </fieldset>
+
+          <fieldset id="otherFields" class="form-card" hidden>
+            <legend>Detalhes do treino</legend>
+            <div class="field">
+              <label for="otherType">Tipo <span class="optional">(opcional)</span></label>
+              <input id="otherType" name="otherType" type="text" maxlength="80" autocomplete="off" placeholder="Ex.: técnica, intervalado, leve">
+            </div>
+            <div class="field-grid field-grid--two field--spaced">
+              <div class="field">
+                <label for="otherRounds">Rounds / blocos <span class="optional">(opcional)</span></label>
+                <input id="otherRounds" name="otherRounds" type="number" min="0" step="1" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label for="otherRoundDuration">Duração/bloco (min) <span class="optional">(opcional)</span></label>
+                <input id="otherRoundDuration" name="otherRoundDuration" type="number" min="0" step="0.5" inputmode="decimal">
+              </div>
+            </div>
+            <div class="field field--spaced">
+              <label for="otherFocus">Foco <span class="optional">(opcional)</span></label>
+              <input id="otherFocus" name="otherFocus" type="text" maxlength="140" autocomplete="off">
+            </div>
+          </fieldset>
+
+          <div class="form-card">
+            <div class="field">
+              <label for="notes">Observações <span class="optional">(opcional)</span></label>
+              <textarea id="notes" name="notes" rows="4" maxlength="500" placeholder="Ex.: Técnica estável; fadiga nos rounds finais."></textarea>
+            </div>
+          </div>
+
+          <div id="validationMessage" class="form-message form-message--error" role="alert" hidden></div>
+
+          <div class="sticky-action sticky-action--form">
+            <button id="generateRecordButton" class="button button--primary button--large" type="submit">GERAR REGISTRO</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="previewScreen" class="screen" aria-labelledby="previewTitle" hidden>
+        <div class="screen-heading">
+          <p class="eyebrow">REGISTRO PRONTO</p>
+          <h1 id="previewTitle">Revise antes de enviar</h1>
+          <p class="hero__text">Este é o texto que será levado para o WhatsApp.</p>
+        </div>
+
+        <pre id="recordPreview" class="record-preview" tabindex="0"></pre>
+
+        <div class="action-stack">
+          <button id="openWhatsappButton" class="button button--primary button--large" type="button">ENVIAR PARA MEU WHATSAPP</button>
+          <button id="copyRecordButton" class="button button--secondary" type="button">Copiar registro</button>
+          <button id="editRecordButton" class="button-link" type="button">Editar registro</button>
+        </div>
+      </section>
+
+      <section id="phoneScreen" class="screen" aria-labelledby="phoneTitle" hidden>
+        <div class="screen-heading">
+          <p class="eyebrow">WHATSAPP</p>
+          <h1 id="phoneTitle">Para onde enviar?</h1>
+          <p class="hero__text">Use seu próprio WhatsApp como histórico dos treinos.</p>
+        </div>
+
+        <form id="phoneForm" class="form-card" novalidate>
+          <div class="field">
+            <label for="phoneInput">WhatsApp</label>
+            <div class="phone-field">
+              <span class="phone-prefix" aria-hidden="true">+55</span>
+              <input
+                id="phoneInput"
+                name="phone"
+                type="tel"
+                inputmode="numeric"
+                autocomplete="tel"
+                enterkeyhint="go"
+                placeholder="83 99999-9999"
+                aria-describedby="phoneHint phoneError"
+                required
+              >
+            </div>
+            <p id="phoneHint" class="helper-text">Aceita DDD + número ou o número completo com +55.</p>
+            <p id="phoneError" class="field-error" role="alert" hidden></p>
+          </div>
+
+          <label class="checkbox-row" for="rememberPhone">
+            <input id="rememberPhone" name="rememberPhone" type="checkbox">
+            <span>
+              <strong>Salvar este número neste aparelho</strong>
+              <small>Seu número fica somente neste aparelho se você escolher essa opção.</small>
+            </span>
+          </label>
+
+          <button id="continueWhatsappButton" class="button button--primary button--large" type="submit">CONTINUAR PARA O WHATSAPP</button>
+          <button id="backToPreviewButton" class="button-link" type="button">Voltar ao registro</button>
+        </form>
+      </section>
+
+      <section id="preparedScreen" class="screen" aria-labelledby="preparedTitle" hidden>
+        <div class="result-state">
+          <div class="result-state__symbol" aria-hidden="true">↗</div>
+          <p class="eyebrow">REGISTRO PREPARADO</p>
+          <h1 id="preparedTitle">Seu registro foi aberto no WhatsApp.</h1>
+          <p>O navegador não consegue confirmar se a mensagem foi realmente enviada.</p>
+        </div>
+
+        <div class="action-stack">
+          <button id="sentConfirmationButton" class="button button--primary button--large" type="button">JÁ ENVIEI</button>
+          <button id="reopenWhatsappButton" class="button button--secondary" type="button">Abrir WhatsApp novamente</button>
+          <button id="copyPreparedButton" class="button button--secondary" type="button">Copiar registro</button>
+          <button id="editPreparedButton" class="button-link" type="button">Editar registro</button>
+        </div>
+        <p class="helper-text helper-text--center">Se o WhatsApp não abrir, copie o registro e cole manualmente.</p>
+      </section>
+
+      <section id="completeScreen" class="screen" aria-labelledby="completeTitle" hidden>
+        <div class="result-state result-state--success">
+          <div class="result-state__symbol" aria-hidden="true">✓</div>
+          <p class="eyebrow">REGISTRO CONCLUÍDO</p>
+          <h1 id="completeTitle">Treino registrado.</h1>
+          <p id="completeSummary" class="complete-summary">—</p>
+        </div>
+        <div class="sticky-action">
+          <button id="newWorkoutButton" class="button button--primary button--large" type="button">NOVO TREINO</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>Makai Performance System [BETA]</span>
+    </footer>
+  </div>
+
+  <dialog id="privacyDialog" class="dialog">
+    <div class="dialog__content">
+      <div class="dialog__header">
+        <h2>Privacidade</h2>
+        <button id="closePrivacyButton" class="icon-button" type="button" aria-label="Fechar privacidade">×</button>
+      </div>
+      <p>Makai Performance System [BETA] não possui conta ou banco de dados próprio.</p>
+      <p>Os dados da sessão ficam temporariamente neste navegador. O registro é levado ao WhatsApp somente quando você escolhe abrir o aplicativo.</p>
+      <p>O número pode ser salvo neste aparelho se você autorizar. Você pode apagar os dados locais a qualquer momento pelo menu.</p>
+    </div>
+  </dialog>
+
+  <div id="liveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
