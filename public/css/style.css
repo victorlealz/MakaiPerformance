@@ -394,52 +394,6 @@ h2 {
   margin-top: var(--space-6);
 }
 
-.session-status {
-  display: flex;
-  min-height: 60vh;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.session-status__modality {
-  margin-bottom: var(--space-8);
-}
-
-.timer {
-  margin-bottom: var(--space-8);
-  color: var(--makai-black);
-  font-size: clamp(3rem, 16vw, 5.4rem);
-  font-variant-numeric: tabular-nums;
-  font-weight: 900;
-  letter-spacing: -0.06em;
-  line-height: 1;
-}
-
-.session-meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
-.session-meta > div {
-  border-top: 1px solid var(--makai-border);
-  padding-top: var(--space-3);
-}
-
-.session-meta__label {
-  display: block;
-  margin-bottom: var(--space-1);
-  color: var(--makai-gray);
-  font-size: 0.78rem;
-  text-transform: uppercase;
-}
-
-.session-meta strong {
-  display: block;
-  overflow-wrap: anywhere;
-  font-size: 0.95rem;
-}
 
 .form-card {
   margin: 0 0 var(--space-4);
@@ -799,4 +753,51 @@ fieldset.form-card {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Multiple strength exercises */
+.exercise-list {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.exercise-row {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--makai-border);
+  border-radius: var(--radius-sm);
+  background: var(--makai-light);
+  padding: var(--space-3);
+}
+
+.exercise-row__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.exercise-row__header strong {
+  color: var(--makai-graphite);
+  font-size: 0.9rem;
+}
+
+.remove-exercise-button {
+  min-height: 36px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+.add-exercise-button {
+  width: 100%;
+  margin-top: var(--space-3);
+  font-weight: 850;
+}
+
+/* The review box is intentionally editable. */
+textarea.record-preview {
+  min-height: 24rem;
+  background: var(--makai-white);
+  resize: vertical;
 }

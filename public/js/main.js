@@ -13,7 +13,6 @@
   const VALID_DRAFT_STAGES = new Set(["completion", "preview", "prepared"]);
   const SCREENS = [
     "homeScreen",
-    "activeScreen",
     "completionScreen",
     "previewScreen",
     "phoneScreen",
@@ -26,7 +25,6 @@
     draft: null,
     selectedModality: "",
     customModality: "",
-    timerId: null,
     transientPhone: "",
     lastCompleted: null
   };
@@ -45,13 +43,8 @@
       "otherSportDetails",
       "otherSportInput",
       "selectOtherSportButton",
-      "startWorkoutButton",
-      "activeTitle",
-      "activeTimer",
-      "activeStartTime",
-      "activeSessionId",
-      "finishWorkoutButton",
-      "cancelWorkoutButton",
+      "registerWorkoutButton",
+      "cancelRegistrationButton",
       "completionSummary",
       "completionForm",
       "workoutDate",
@@ -59,16 +52,15 @@
       "startTimeInput",
       "endTimeInput",
       "rpeFieldset",
-      "sleepFieldset",
+      "fatigueFieldset",
       "painFieldset",
       "painLocationWrap",
       "painLocation",
       "strengthFields",
       "strengthSessionNameWrap",
       "strengthSessionName",
-      "mainExercise",
-      "loadKg",
-      "setsReps",
+      "exerciseList",
+      "addExerciseButton",
       "combatFields",
       "combatLegend",
       "combatTypeButtons",
@@ -86,7 +78,6 @@
       "recordPreview",
       "openWhatsappButton",
       "copyRecordButton",
-      "editRecordButton",
       "phoneForm",
       "phoneInput",
       "rememberPhone",
@@ -185,14 +176,6 @@
     return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
   }
 
-  function formatElapsed(ms) {
-    const safeMs = Math.max(0, Number(ms) || 0);
-    const totalSeconds = Math.floor(safeMs / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
-  }
 
   function formatNumberBr(value) {
     if (value === "" || value === null || value === undefined) return "";
@@ -252,9 +235,7 @@
       typeof value === "object" &&
       typeof value.id === "string" &&
       typeof value.modality === "string" &&
-      Number.isFinite(Number(value.startTimestamp)) &&
-      /^\d{4}-\d{2}-\d{2}$/.test(value.dateISO || "") &&
-      /^\d{2}:\d{2}$/.test(value.startTime || "")
+      /^\d{4}-\d{2}-\d{2}$/.test(value.dateISO || "")
     );
   }
 
@@ -300,12 +281,6 @@
     writeJson(STORAGE_KEYS.draft, state.draft);
   }
 
-  function stopTimer() {
-    if (state.timerId) {
-      window.clearInterval(state.timerId);
-      state.timerId = null;
-    }
-  }
 
   function showScreen(screenId) {
     SCREENS.forEach((id) => {
@@ -314,7 +289,6 @@
       element.hidden = id !== screenId;
     });
 
-    if (screenId !== "activeScreen") stopTimer();
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
@@ -332,34 +306,13 @@
       button.setAttribute("aria-pressed", "false");
     });
     if (dom.otherSportInput) dom.otherSportInput.value = "";
-    if (dom.startWorkoutButton) dom.startWorkoutButton.disabled = true;
+    if (dom.registerWorkoutButton) dom.registerWorkoutButton.disabled = true;
   }
 
   function renderHome() {
-    stopTimer();
     showScreen("homeScreen");
   }
 
-  function updateTimer() {
-    if (!state.activeSession || !dom.activeTimer) return;
-    dom.activeTimer.textContent = formatElapsed(Date.now() - Number(state.activeSession.startTimestamp));
-  }
-
-  function renderActive(restored = false) {
-    if (!state.activeSession) {
-      renderHome();
-      return;
-    }
-
-    showScreen("activeScreen");
-    dom.activeTitle.textContent = getModalityLabel();
-    dom.activeStartTime.textContent = state.activeSession.startTime;
-    dom.activeSessionId.textContent = state.activeSession.id;
-    updateTimer();
-    state.timerId = window.setInterval(updateTimer, 1000);
-
-    if (restored) announce("Sessão restaurada.");
-  }
 
   function setHomeModality(modality, customModality = "") {
     state.selectedModality = modality;
@@ -372,55 +325,35 @@
     });
 
     const ready = modality && (modality !== "Outro" || customModality.trim().length > 0);
-    dom.startWorkoutButton.disabled = !ready;
+    dom.registerWorkoutButton.disabled = !ready;
   }
 
-  function startWorkout() {
-    const modality = state.selectedModality;
-    const customModality = state.customModality.trim();
-
-    if (!modality || (modality === "Outro" && !customModality)) {
-      announce("Escolha uma modalidade antes de iniciar.");
-      return;
-    }
-
-    const now = new Date();
-    state.activeSession = {
-      id: createSessionId(now),
-      modality,
-      customModality: modality === "Outro" ? customModality : "",
-      dateISO: formatDateIso(now),
-      startTime: formatTime(now),
-      startTimestamp: now.getTime()
+  function createEmptyExercise(index = 1) {
+    return {
+      id: `exercise-${Date.now()}-${index}`,
+      name: "",
+      loadKg: "",
+      setsReps: ""
     };
-    state.draft = null;
-    saveActiveSession();
-    safeRemoveItem(STORAGE_KEYS.draft);
-    renderActive(false);
-    announce("Treino iniciado.");
   }
 
   function createInitialDraft() {
     const now = new Date();
-    const duration = Math.max(1, Math.round((now.getTime() - Number(state.activeSession.startTimestamp)) / 60000));
 
     return {
       stage: "completion",
-      endTimestamp: now.getTime(),
-      dateISO: state.activeSession.dateISO,
-      startTime: state.activeSession.startTime,
+      dateISO: state.activeSession?.dateISO || formatDateIso(now),
+      startTime: "",
       endTime: formatTime(now),
-      duration,
+      duration: "",
       rpe: null,
-      sleep: null,
+      fatigue: null,
       pain: null,
       painLocation: "",
       notes: "",
       strengthSession: "",
       strengthSessionName: "",
-      mainExercise: "",
-      loadKg: "",
-      setsReps: "",
+      exercises: [createEmptyExercise(1)],
       combatType: "",
       rounds: "",
       roundDuration: "",
@@ -433,16 +366,32 @@
     };
   }
 
-  function finishWorkout() {
-    if (!state.activeSession) return;
+  function registerWorkout() {
+    const modality = state.selectedModality;
+    const customModality = state.customModality.trim();
+
+    if (!modality || (modality === "Outro" && !customModality)) {
+      announce("Escolha uma modalidade antes de registrar.");
+      return;
+    }
+
+    const now = new Date();
+    state.activeSession = {
+      id: createSessionId(now),
+      modality,
+      customModality: modality === "Outro" ? customModality : "",
+      dateISO: formatDateIso(now),
+      createdTimestamp: now.getTime()
+    };
     state.draft = createInitialDraft();
+    saveActiveSession();
     saveDraft();
     renderCompletion();
-    announce("Treino finalizado. Preencha o resumo.");
+    announce("Preencha os dados do treino.");
   }
 
-  function cancelWorkout() {
-    const confirmed = window.confirm("Cancelar esta sessão? Os dados atuais do treino serão apagados.");
+  function cancelRegistration() {
+    const confirmed = window.confirm("Cancelar este registro? Os dados preenchidos serão apagados.");
     if (!confirmed) return;
 
     state.activeSession = null;
@@ -452,7 +401,7 @@
     safeRemoveItem(STORAGE_KEYS.draft);
     resetHomeSelection();
     renderHome();
-    announce("Sessão cancelada.");
+    announce("Registro cancelado.");
   }
 
   function setChipSelection(group, value) {
@@ -465,7 +414,7 @@
 
   function clearSelectionError(group) {
     if (group === "rpe") dom.rpeFieldset.classList.remove("has-error");
-    if (group === "sleep") dom.sleepFieldset.classList.remove("has-error");
+    if (group === "fatigue") dom.fatigueFieldset.classList.remove("has-error");
     if (group === "pain") dom.painFieldset.classList.remove("has-error");
   }
 
@@ -487,6 +436,133 @@
       state.draft.strengthSessionName = "";
       dom.strengthSessionName.value = "";
     }
+  }
+
+  function ensureExerciseArray() {
+    if (!state.draft) return;
+
+    if (!Array.isArray(state.draft.exercises)) {
+      const legacyHasExercise = Boolean(
+        state.draft.mainExercise ||
+        (state.draft.loadKg !== "" && state.draft.loadKg !== undefined && state.draft.loadKg !== null) ||
+        state.draft.setsReps
+      );
+      state.draft.exercises = legacyHasExercise
+        ? [{
+            id: `exercise-${Date.now()}-legacy`,
+            name: state.draft.mainExercise || "",
+            loadKg: state.draft.loadKg ?? "",
+            setsReps: state.draft.setsReps || ""
+          }]
+        : [createEmptyExercise(1)];
+    }
+
+    if (state.draft.exercises.length === 0) {
+      state.draft.exercises.push(createEmptyExercise(1));
+    }
+  }
+
+  function makeExerciseField(labelText, field, exercise, options = {}) {
+    const wrap = document.createElement("div");
+    wrap.className = "field";
+
+    const label = document.createElement("label");
+    const inputId = `${exercise.id}-${field}`;
+    label.htmlFor = inputId;
+    label.textContent = labelText;
+
+    const input = document.createElement("input");
+    input.id = inputId;
+    input.dataset.exerciseId = exercise.id;
+    input.dataset.exerciseField = field;
+    input.value = exercise[field] ?? "";
+    input.autocomplete = "off";
+    input.placeholder = options.placeholder || "";
+    if (options.type) input.type = options.type;
+    if (options.inputmode) input.inputMode = options.inputmode;
+    if (options.min !== undefined) input.min = String(options.min);
+    if (options.step !== undefined) input.step = String(options.step);
+    if (options.maxLength) input.maxLength = options.maxLength;
+
+    wrap.append(label, input);
+    return wrap;
+  }
+
+  function renderExerciseList() {
+    if (!dom.exerciseList || !state.draft) return;
+    ensureExerciseArray();
+    dom.exerciseList.replaceChildren();
+
+    state.draft.exercises.forEach((exercise, index) => {
+      const card = document.createElement("div");
+      card.className = "exercise-row";
+      card.dataset.exerciseId = exercise.id;
+
+      const header = document.createElement("div");
+      header.className = "exercise-row__header";
+
+      const title = document.createElement("strong");
+      title.textContent = `Exercício ${index + 1}`;
+      header.appendChild(title);
+
+      if (state.draft.exercises.length > 1) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "button-link button-link--danger remove-exercise-button";
+        remove.dataset.removeExercise = exercise.id;
+        remove.textContent = "Remover";
+        remove.setAttribute("aria-label", `Remover exercício ${index + 1}`);
+        header.appendChild(remove);
+      }
+
+      const nameField = makeExerciseField("Exercício", "name", exercise, {
+        placeholder: "Ex.: Front Squat",
+        maxLength: 140
+      });
+
+      const grid = document.createElement("div");
+      grid.className = "field-grid field-grid--two";
+      grid.append(
+        makeExerciseField("Carga (kg)", "loadKg", exercise, {
+          type: "number", inputmode: "decimal", min: 0, step: 0.5, placeholder: "90"
+        }),
+        makeExerciseField("Séries × repetições", "setsReps", exercise, {
+          placeholder: "Ex.: 5x4", maxLength: 40
+        })
+      );
+
+      card.append(header, nameField, grid);
+      dom.exerciseList.appendChild(card);
+    });
+  }
+
+  function addExercise() {
+    if (!state.draft) return;
+    ensureExerciseArray();
+    state.draft.exercises.push(createEmptyExercise(state.draft.exercises.length + 1));
+    renderExerciseList();
+    saveDraft();
+    dom.exerciseList.querySelector(".exercise-row:last-child input")?.focus();
+    announce("Exercício adicionado.");
+  }
+
+  function removeExercise(exerciseId) {
+    if (!state.draft) return;
+    ensureExerciseArray();
+    if (state.draft.exercises.length <= 1) return;
+    state.draft.exercises = state.draft.exercises.filter((exercise) => exercise.id !== exerciseId);
+    renderExerciseList();
+    saveDraft();
+    announce("Exercício removido.");
+  }
+
+  function updateExerciseFromInput(input) {
+    if (!state.draft) return;
+    ensureExerciseArray();
+    const exercise = state.draft.exercises.find((item) => item.id === input.dataset.exerciseId);
+    if (!exercise) return;
+    exercise[input.dataset.exerciseField] = input.value;
+    saveDraftDebounced();
   }
 
   function clearCombatTypeButtons() {
@@ -551,9 +627,7 @@
     dom.durationMinutes.value = state.draft.duration ?? "";
     dom.painLocation.value = state.draft.painLocation || "";
     dom.strengthSessionName.value = state.draft.strengthSessionName || "";
-    dom.mainExercise.value = state.draft.mainExercise || "";
-    dom.loadKg.value = state.draft.loadKg ?? "";
-    dom.setsReps.value = state.draft.setsReps || "";
+    renderExerciseList();
     dom.rounds.value = state.draft.rounds ?? "";
     dom.roundDuration.value = state.draft.roundDuration ?? "";
     dom.technicalFocus.value = state.draft.technicalFocus || "";
@@ -564,7 +638,7 @@
     dom.notes.value = state.draft.notes || "";
 
     setChipSelection("rpe", state.draft.rpe);
-    setChipSelection("sleep", state.draft.sleep);
+    setChipSelection("fatigue", state.draft.fatigue);
     setChipSelection("pain", state.draft.pain);
     setChipSelection("strengthSession", state.draft.strengthSession);
     setChipSelection("combatType", state.draft.combatType);
@@ -586,11 +660,24 @@
     updateCompletionSummary();
   }
 
+  function timeMinusMinutes(timeValue, minutesToSubtract) {
+    const endMinutes = minutesFromTime(timeValue);
+    const duration = Number(minutesToSubtract);
+    if (endMinutes === null || !Number.isFinite(duration) || duration <= 0) return "";
+    const dayMinutes = 24 * 60;
+    const result = ((endMinutes - Math.round(duration)) % dayMinutes + dayMinutes) % dayMinutes;
+    return `${pad2(Math.floor(result / 60))}:${pad2(result % 60)}`;
+  }
+
   function updateCompletionSummary() {
     if (!state.activeSession || !state.draft) return;
     const label = getModalityLabel();
     const duration = Number(state.draft.duration);
-    dom.completionSummary.textContent = `${label} · ${state.draft.startTime || "--:--"} → ${state.draft.endTime || "--:--"} · ${Number.isFinite(duration) ? duration : "—"} min`;
+    const durationText = Number.isFinite(duration) && duration > 0 ? `${duration} min` : "duração a informar";
+    const timeText = state.draft.startTime && state.draft.endTime
+      ? ` · ${state.draft.startTime} → ${state.draft.endTime}`
+      : "";
+    dom.completionSummary.textContent = `${label}${timeText} · ${durationText}`;
   }
 
   function syncDraftFromFields() {
@@ -602,9 +689,6 @@
     state.draft.duration = dom.durationMinutes.value === "" ? "" : Number(dom.durationMinutes.value);
     state.draft.painLocation = dom.painLocation.value.trim();
     state.draft.strengthSessionName = dom.strengthSessionName.value.trim();
-    state.draft.mainExercise = dom.mainExercise.value.trim();
-    state.draft.loadKg = dom.loadKg.value;
-    state.draft.setsReps = dom.setsReps.value.trim();
     state.draft.rounds = dom.rounds.value;
     state.draft.roundDuration = dom.roundDuration.value;
     state.draft.technicalFocus = dom.technicalFocus.value.trim();
@@ -620,11 +704,24 @@
 
   const saveDraftDebounced = debounce(syncDraftFromFields, 300);
 
+  function onDurationChanged() {
+    if (!state.draft) return;
+    const duration = Number(dom.durationMinutes.value);
+    if (Number.isFinite(duration) && duration > 0 && minutesFromTime(dom.endTimeInput.value) !== null) {
+      dom.startTimeInput.value = timeMinusMinutes(dom.endTimeInput.value, duration);
+    }
+    syncDraftFromFields();
+  }
+
   function onTimingChanged() {
     if (!state.draft) return;
-    const computed = durationFromTimes(dom.startTimeInput.value, dom.endTimeInput.value);
-    if (computed !== null) {
-      dom.durationMinutes.value = String(computed);
+    const start = dom.startTimeInput.value;
+    const end = dom.endTimeInput.value;
+    if (minutesFromTime(start) !== null && minutesFromTime(end) !== null) {
+      const computed = durationFromTimes(start, end);
+      if (computed !== null) dom.durationMinutes.value = String(computed);
+    } else if (minutesFromTime(end) !== null && Number(dom.durationMinutes.value) > 0) {
+      dom.startTimeInput.value = timeMinusMinutes(end, dom.durationMinutes.value);
     }
     syncDraftFromFields();
   }
@@ -632,12 +729,13 @@
   function clearValidationState() {
     dom.validationMessage.hidden = true;
     dom.validationMessage.textContent = "";
-    [dom.workoutDate, dom.startTimeInput, dom.endTimeInput, dom.durationMinutes, dom.loadKg, dom.rounds, dom.roundDuration, dom.otherRounds, dom.otherRoundDuration].forEach((input) => {
+    [dom.workoutDate, dom.startTimeInput, dom.endTimeInput, dom.durationMinutes, dom.rounds, dom.roundDuration, dom.otherRounds, dom.otherRoundDuration].forEach((input) => {
       if (input) input.removeAttribute("aria-invalid");
     });
     dom.rpeFieldset.classList.remove("has-error");
-    dom.sleepFieldset.classList.remove("has-error");
+    dom.fatigueFieldset.classList.remove("has-error");
     dom.painFieldset.classList.remove("has-error");
+    dom.exerciseList?.querySelectorAll('[aria-invalid="true"]').forEach((input) => input.removeAttribute("aria-invalid"));
   }
 
   function addValidationError(errors, input, message) {
@@ -687,24 +785,29 @@
       dom.rpeFieldset.classList.add("has-error");
     }
 
-    const sleep = Number(state.draft.sleep);
-    if (!Number.isInteger(sleep) || sleep < 1 || sleep > 5) {
-      errors.push("Selecione a qualidade do sono de 1 a 5.");
-      dom.sleepFieldset.classList.add("has-error");
+    const fatigue = Number(state.draft.fatigue);
+    if (state.draft.fatigue === null || state.draft.fatigue === "" || !Number.isInteger(fatigue) || fatigue < 0 || fatigue > 10) {
+      errors.push("Selecione o Cansaço Pós Treino de 0 a 10.");
+      dom.fatigueFieldset.classList.add("has-error");
     }
 
     const pain = Number(state.draft.pain);
-    if (!Number.isInteger(pain) || pain < 0 || pain > 10) {
-      errors.push("Selecione dor/desconforto de 0 a 10.");
+    if (state.draft.pain === null || state.draft.pain === "" || !Number.isInteger(pain) || pain < 0 || pain > 10) {
+      errors.push("Selecione Dor / Desconforto de 0 a 10.");
       dom.painFieldset.classList.add("has-error");
     }
 
     if (state.activeSession.modality === "Musculação") {
-      const loadError = validateOptionalNonNegativeNumber(state.draft.loadKg, dom.loadKg, "Carga principal");
-      if (loadError) {
-        errors.push(loadError);
-        dom.loadKg.setAttribute("aria-invalid", "true");
-      }
+      ensureExerciseArray();
+      state.draft.exercises.forEach((exercise, index) => {
+        if (exercise.loadKg === "" || exercise.loadKg === null || exercise.loadKg === undefined) return;
+        const number = Number(exercise.loadKg);
+        if (!Number.isFinite(number) || number < 0) {
+          errors.push(`Carga do exercício ${index + 1} deve ser um número igual ou maior que zero.`);
+          const input = dom.exerciseList.querySelector(`[data-exercise-id="${exercise.id}"][data-exercise-field="loadKg"]`);
+          input?.setAttribute("aria-invalid", "true");
+        }
+      });
     }
 
     if (["Jiu-Jitsu", "Judô", "Muay Thai"].includes(state.activeSession.modality)) {
@@ -775,9 +878,23 @@
         sessionName = `Livre — ${draft.strengthSessionName}`;
       }
       appendLineIf(lines, "Sessão", sessionName);
-      appendLineIf(lines, "Exercícios principais", draft.mainExercise);
-      if (draft.loadKg !== "") appendLineIf(lines, "Carga principal", `${formatNumberBr(draft.loadKg)} kg`);
-      appendLineIf(lines, "Séries/Reps", draft.setsReps);
+      ensureExerciseArray();
+      const filledExercises = draft.exercises.filter((exercise) =>
+        String(exercise.name || "").trim() ||
+        (exercise.loadKg !== "" && exercise.loadKg !== null && exercise.loadKg !== undefined) ||
+        String(exercise.setsReps || "").trim()
+      );
+      if (filledExercises.length > 0) {
+        lines.push("Exercícios:");
+        filledExercises.forEach((exercise, index) => {
+          const parts = [String(exercise.name || "").trim() || `Exercício ${index + 1}`];
+          if (exercise.loadKg !== "" && exercise.loadKg !== null && exercise.loadKg !== undefined) {
+            parts.push(`${formatNumberBr(exercise.loadKg)} kg`);
+          }
+          if (String(exercise.setsReps || "").trim()) parts.push(String(exercise.setsReps).trim());
+          lines.push(`${index + 1}. ${parts.join(" · ")}`);
+        });
+      }
     }
 
     if (["Jiu-Jitsu", "Judô", "Muay Thai"].includes(session.modality)) {
@@ -797,12 +914,12 @@
     lines.push(
       "",
       `RPE: ${draft.rpe}/10`,
-      `Sono: ${draft.sleep}/5`,
-      `Dor: ${draft.pain}/10`
+      `Cansaço Pós Treino: ${draft.fatigue}/10`,
+      `Dor / Desconforto: ${draft.pain}/10`
     );
 
     if (Number(draft.pain) > 0) {
-      appendLineIf(lines, "Local da dor", draft.painLocation);
+      appendLineIf(lines, "Local da Dor/Desconforto", draft.painLocation);
     }
 
     if (draft.notes) {
@@ -836,7 +953,7 @@
     }
 
     showScreen("previewScreen");
-    dom.recordPreview.textContent = state.draft.message;
+    dom.recordPreview.value = state.draft.message;
   }
 
   async function copyText(text) {
@@ -877,11 +994,12 @@
     announce(copied ? "Registro copiado." : "Não foi possível copiar automaticamente.");
   }
 
-  function editRecord() {
-    if (!state.draft) return;
-    state.draft.stage = "completion";
+  function editRecordText() {
+    if (!state.draft?.message) return;
+    state.draft.stage = "preview";
     saveDraft();
-    renderCompletion();
+    renderPreview();
+    window.setTimeout(() => dom.recordPreview.focus(), 50);
   }
 
   function normalizeBrazilPhone(rawValue) {
@@ -969,6 +1087,10 @@
   }
 
   function requestWhatsappOpen() {
+    if (state.draft && dom.recordPreview && !dom.previewScreen.hidden) {
+      state.draft.message = dom.recordPreview.value;
+      saveDraft();
+    }
     const savedPhone = getSavedPhone();
     if (savedPhone) {
       openWhatsappWithPhone(savedPhone);
@@ -1065,7 +1187,6 @@
     state.draft = null;
     state.transientPhone = "";
     state.lastCompleted = null;
-    stopTimer();
     closeMenu();
     resetHomeSelection();
     renderHome();
@@ -1096,7 +1217,7 @@
     const rawValue = button.dataset.value;
     if (!group) return;
 
-    if (["rpe", "sleep", "pain"].includes(group)) {
+    if (["rpe", "fatigue", "pain"].includes(group)) {
       state.draft[group] = Number(rawValue);
       clearSelectionError(group);
     } else if (group === "strengthSession") {
@@ -1134,13 +1255,21 @@
       dom.otherSportInput.removeAttribute("aria-invalid");
       if (state.selectedModality === "Outro") {
         state.customModality = dom.otherSportInput.value.trim();
-        dom.startWorkoutButton.disabled = state.customModality.length === 0;
+        dom.registerWorkoutButton.disabled = state.customModality.length === 0;
       }
     });
 
-    dom.startWorkoutButton.addEventListener("click", startWorkout);
-    dom.finishWorkoutButton.addEventListener("click", finishWorkout);
-    dom.cancelWorkoutButton.addEventListener("click", cancelWorkout);
+    dom.registerWorkoutButton.addEventListener("click", registerWorkout);
+    dom.cancelRegistrationButton.addEventListener("click", cancelRegistration);
+    dom.addExerciseButton.addEventListener("click", addExercise);
+    dom.exerciseList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove-exercise]");
+      if (button) removeExercise(button.dataset.removeExercise);
+    });
+    dom.exerciseList.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-exercise-field]");
+      if (input) updateExerciseFromInput(input);
+    });
 
     dom.completionForm.addEventListener("click", (event) => {
       const button = event.target.closest("[data-group]");
@@ -1148,7 +1277,12 @@
     });
 
     dom.completionForm.addEventListener("input", (event) => {
+      if (event.target === dom.durationMinutes) {
+        onDurationChanged();
+        return;
+      }
       if ([dom.startTimeInput, dom.endTimeInput].includes(event.target)) return;
+      if (event.target.closest("[data-exercise-field]")) return;
       saveDraftDebounced();
     });
 
@@ -1164,7 +1298,11 @@
 
     dom.openWhatsappButton.addEventListener("click", requestWhatsappOpen);
     dom.copyRecordButton.addEventListener("click", copyCurrentRecord);
-    dom.editRecordButton.addEventListener("click", editRecord);
+    dom.recordPreview.addEventListener("input", () => {
+      if (!state.draft) return;
+      state.draft.message = dom.recordPreview.value;
+      saveDraft();
+    });
 
     dom.phoneForm.addEventListener("submit", submitPhone);
     dom.phoneInput.addEventListener("input", () => {
@@ -1177,7 +1315,7 @@
     dom.sentConfirmationButton.addEventListener("click", completeWorkout);
     dom.reopenWhatsappButton.addEventListener("click", reopenWhatsapp);
     dom.copyPreparedButton.addEventListener("click", copyCurrentRecord);
-    dom.editPreparedButton.addEventListener("click", editRecord);
+    dom.editPreparedButton.addEventListener("click", editRecordText);
     dom.newWorkoutButton.addEventListener("click", newWorkout);
 
     dom.menuButton.addEventListener("click", () => {
@@ -1214,9 +1352,15 @@
     }
 
     if (!state.draft) {
-      renderActive(true);
+      state.draft = createInitialDraft();
+      saveDraft();
+      renderCompletion();
+      announce("Registro restaurado.");
       return;
     }
+
+    if (state.draft.fatigue === undefined) state.draft.fatigue = null;
+    ensureExerciseArray();
 
     if (state.draft.stage === "completion") {
       renderCompletion();
@@ -1236,7 +1380,9 @@
       return;
     }
 
-    renderActive(true);
+    state.draft.stage = "completion";
+    saveDraft();
+    renderCompletion();
   }
 
   function init() {
