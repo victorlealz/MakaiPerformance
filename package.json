@@ -1,0 +1,12 @@
+{
+  "name": "makai-performance-system",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev .",
+    "deploy": "wrangler pages deploy . --project-name=makai-auto-registro"
+  },
+  "devDependencies": {
+    "wrangler": "4.145.0"
+  }
+}
